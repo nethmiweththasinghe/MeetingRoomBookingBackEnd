@@ -94,7 +94,6 @@ namespace MeetingRoomBooking.Api.Controllers
                 }
                 var booking = new Booking
                 {
-                    BookingId = bookingResponse.BookingId,
                     RoomId = bookingResponse.RoomId,
                     StaffId = bookingResponse.StaffId,
                     BookingDate = bookingResponse.BookingDate,
@@ -107,7 +106,7 @@ namespace MeetingRoomBooking.Api.Controllers
                 };
                 _dbContext.Bookings.Add(booking);
                 await _dbContext.SaveChangesAsync();
-                return Ok(bookingResponse);
+                return Ok(ToResponse(booking));
             }
             catch(Exception ex)
             {
@@ -127,7 +126,6 @@ namespace MeetingRoomBooking.Api.Controllers
                     return NotFound();
                 }
 
-                booking.BookingId = bookingResponse.BookingId;
                 booking.RoomId = bookingResponse.RoomId;
                 booking.StaffId = bookingResponse.StaffId;
                 booking.BookingDate = bookingResponse.BookingDate;
@@ -140,7 +138,7 @@ namespace MeetingRoomBooking.Api.Controllers
                 
                 _dbContext.Bookings.Update(booking);
                 await _dbContext.SaveChangesAsync();
-                return Ok(bookingResponse);
+                return Ok(ToResponse(booking));
             }
             catch (Exception ex)
             {

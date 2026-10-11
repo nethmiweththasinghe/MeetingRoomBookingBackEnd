@@ -18,9 +18,9 @@ namespace MeetingRoomBooking.Domain.Entities
         // FK -> StaffTbl.StaffId  (FK_BookingsTbl_StaffTbl)
         public int StaffId { get; set; }
 
-        public DateTime BookingDate { get; set; }
+        public DateOnly BookingDate { get; set; }
 
-        public DateTime BookingTime { get; set; }
+        public TimeOnly BookingTime { get; set; }
         public int MeetingHours { get; set; }
 
         [StringLength(50)]

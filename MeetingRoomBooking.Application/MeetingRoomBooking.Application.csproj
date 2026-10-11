@@ -22,4 +22,8 @@
     <Folder Include="Services\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="DTOs\BookingResponse.cs" />
+  </ItemGroup>
+
 </Project>

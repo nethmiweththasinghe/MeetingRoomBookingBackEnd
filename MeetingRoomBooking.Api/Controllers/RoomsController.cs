@@ -26,7 +26,7 @@ namespace MeetingRoomBooking.Api.Controllers
             try
             {
                 var roomResponse = await _dbContext.Rooms
-                .Select(r => new RoomResponse { Id = r.RoomId, Name = r.RoomName, RoomLocation = r.RoomLocation, Capacity = r.Capacity })
+                .Select(r => new RoomResponse { Id = r.RoomId, Name = r.RoomName, RoomLocation = r.RoomLocation, Capacity = r.Capacity, IsActive = r.IsActive })
                 .ToListAsync();
                 if (roomResponse == null || !roomResponse.Any())
                 {
@@ -57,7 +57,9 @@ namespace MeetingRoomBooking.Api.Controllers
                 {
                     Id = room.RoomId,
                     Name = room.RoomName,
-                    Capacity = room.Capacity
+                    RoomLocation = room.RoomLocation,
+                    Capacity = room.Capacity,
+                    IsActive = room.IsActive
                 };
 
                 return Ok(roomResponse);

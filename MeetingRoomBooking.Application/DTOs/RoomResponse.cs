@@ -10,6 +10,6 @@ namespace MeetingRoomBooking.Application.DTOs
         public string Name { get; set; }
         public string? RoomLocation { get; set; }
         public int Capacity { get; set; }
-        public bool IsActive { get; set; }
+        public bool? IsActive { get; set; }
     }
 }

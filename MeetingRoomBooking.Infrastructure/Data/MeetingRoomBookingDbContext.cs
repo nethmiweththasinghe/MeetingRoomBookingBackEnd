@@ -1,12 +1,11 @@
-﻿using MeetingRoomBooking.Domain.Entities;
+﻿using MeetingRoomBooking.Application.Interfaces;
+using MeetingRoomBooking.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace MeetingRoomBooking.Infrastructure.Data
 {
-    public class MeetingRoomBookingDbContext(DbContextOptions<MeetingRoomBookingDbContext> options) : DbContext(options)
+    public class MeetingRoomBookingDbContext(DbContextOptions<MeetingRoomBookingDbContext> options)
+        : DbContext(options), IMeetingRoomBookingDbContext
     {
         public DbSet<Booking> Bookings => Set<Booking>();
         public DbSet<Room> Rooms => Set<Room>();

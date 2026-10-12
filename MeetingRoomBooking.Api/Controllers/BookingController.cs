@@ -1,6 +1,7 @@
-﻿using Azure.Core;
+﻿using MeetingRoomBooking.Application.Common;
 using MeetingRoomBooking.Application.DTOs;
-using MeetingRoomBooking.Domain.Entities;
+using MeetingRoomBooking.Application.Interfaces;
+using MeetingRoomBooking.Application.Mappings;
 using MeetingRoomBooking.Infrastructure.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -14,38 +15,31 @@ namespace MeetingRoomBooking.Api.Controllers
     {
         private readonly ILogger<BookingController> _logger;
         private readonly MeetingRoomBookingDbContext _dbContext;
+        private readonly IBookingService _bookingService;
 
-        public BookingController(ILogger<BookingController> logger, MeetingRoomBookingDbContext dbContext)
+        public BookingController(
+            ILogger<BookingController> logger,
+            MeetingRoomBookingDbContext dbContext,
+            IBookingService bookingService)
         {
             _logger = logger;
             _dbContext = dbContext;
+            _bookingService = bookingService;
         }
+
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<BookingResponse>>> GetBookingDetails()
         {
             try
             {
-                var bookingResponse = await _dbContext.Bookings.Select(b => new BookingResponse
-                {
-                    BookingId = b.BookingId,
-                    RoomId = b.RoomId,
-                    StaffId = b.StaffId,
-                    BookingDate = b.BookingDate,
-                    BookingTime = b.BookingTime,
-                    MeetingHours = b.MeetingHours,
-                    Title = b.Title,
-                    NoAttendees = b.NoAttendees,
-                    Status = b.Status,
-                    CreatedTime = b.CreatedTime
-                }).ToListAsync();
-
-                return Ok(bookingResponse);
+                var bookings = await _dbContext.Bookings.ToListAsync();
+                return Ok(bookings.Select(b => b.ToResponse()));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occured while fetching bookings");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occured while fetching bookings");
+                _logger.LogError(ex, "An error occurred while fetching bookings");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while fetching bookings");
             }
         }
 
@@ -54,139 +48,46 @@ namespace MeetingRoomBooking.Api.Controllers
         {
             try
             {
-                var b = await _dbContext.Bookings.FindAsync(id);
-                if (b == null)
+                var booking = await _dbContext.Bookings.FindAsync(id);
+                if (booking == null)
                 {
                     return NotFound();
                 }
 
-                var bookingResponse = new BookingResponse
-                {
-                    BookingId = b.BookingId,
-                    RoomId = b.RoomId,
-                    StaffId = b.StaffId,
-                    BookingDate = b.BookingDate,
-                    BookingTime = b.BookingTime,
-                    MeetingHours = b.MeetingHours,
-                    Title = b.Title,
-                    NoAttendees = b.NoAttendees,
-                    Status = b.Status,
-                    CreatedTime = b.CreatedTime
-                };
-
-                return Ok(bookingResponse);
+                return Ok(booking.ToResponse());
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occured while fetching booking");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occured while fetching booking");
+                _logger.LogError(ex, "An error occurred while fetching booking {BookingId}", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while fetching booking");
             }
         }
 
         [HttpPost]
-        public async Task<ActionResult> AddBookingDetails([FromBody]BookingResponse bookingResponse)
+        public async Task<ActionResult<BookingResponse>> AddBookingDetails([FromBody] BookingResponse request)
         {
-            try
-            {
-                if (bookingResponse == null)
-                {
-                    return BadRequest("Booking data is required");
-                }
-                var booking = new Booking
-                {
-                    RoomId = bookingResponse.RoomId,
-                    StaffId = bookingResponse.StaffId,
-                    BookingDate = bookingResponse.BookingDate,
-                    BookingTime = bookingResponse.BookingTime,
-                    MeetingHours = bookingResponse.MeetingHours,
-                    Title = bookingResponse.Title,
-                    NoAttendees = bookingResponse.NoAttendees,
-                    Status = bookingResponse.Status,
-                    CreatedTime = bookingResponse.CreatedTime
-                };
-                _dbContext.Bookings.Add(booking);
-                await _dbContext.SaveChangesAsync();
-                return Ok(ToResponse(booking));
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, "An error occured while adding bookings");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occured while adding bookings");
-            }
-        }
+            var result = await _bookingService.CreateAsync(request);
 
-        [HttpPut("{id:int}")]
-        public async Task<ActionResult> UpdateBookingDetails(int id, [FromBody] BookingResponse bookingResponse)
-        {
-            try
-            {
-                var booking = await _dbContext.Bookings.FindAsync(id);
-                if (booking == null)
-                {
-                    return NotFound();
-                }
-
-                booking.RoomId = bookingResponse.RoomId;
-                booking.StaffId = bookingResponse.StaffId;
-                booking.BookingDate = bookingResponse.BookingDate;
-                booking.BookingTime = bookingResponse.BookingTime;
-                booking.MeetingHours = bookingResponse.MeetingHours;
-                booking.Title = bookingResponse.Title;
-                booking.NoAttendees = bookingResponse.NoAttendees;
-                booking.Status = bookingResponse.Status;
-                booking.CreatedTime = bookingResponse.CreatedTime;
-                
-                _dbContext.Bookings.Update(booking);
-                await _dbContext.SaveChangesAsync();
-                return Ok(ToResponse(booking));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An error occured while updating bookings");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occured while updating bookings");
-            }
+            return result.Status == ResultStatus.Ok
+                ? CreatedAtAction(nameof(GetBookingDetailsById), new { id = result.Value!.BookingId }, result.Value)
+                : ToProblem(result);
         }
 
         [HttpPatch("{id:int}")]
-        public async Task<ActionResult<BookingResponsePatch>> UpdateBookingData(int id, [FromBody] BookingResponsePatch request)
+        public async Task<ActionResult<BookingResponse>> UpdateBookingData(int id, [FromBody] BookingResponsePatch request)
         {
-            try
-            {
-                var booking = await _dbContext.Bookings.FindAsync(id);
-                if (booking == null)
-                {
-                    return NotFound();
-                }
-
-                if (request.RoomId != null) booking.RoomId = request.RoomId.Value;
-                if (request.BookingDate != null) booking.BookingDate = request.BookingDate.Value;
-                if (request.BookingTime != null) booking.BookingTime = request.BookingTime.Value;
-                if (request.MeetingHours != null) booking.MeetingHours = request.MeetingHours.Value;
-                if (request.Title != null) booking.Title = request.Title.Trim();
-                if (request.NoAttendees != null) booking.NoAttendees = request.NoAttendees.Value;
-                if (request.Status != null) booking.Status = request.Status;
-
-                var room = await _dbContext.Rooms.FindAsync(booking.RoomId);
-                if (room == null)
-                {
-                    return BadRequest("That room doesn't exist");
-                }
-                if (booking.NoAttendees > room.Capacity)
-                {
-                    return BadRequest($"{room.RoomName} seats {room.Capacity}. Reduce the attendees or choose a bigger room.");
-                }
-
-                await _dbContext.SaveChangesAsync();
-
-                return Ok(ToResponse(booking));
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, "Error occured while updating booking data");
-                return StatusCode(StatusCodes.Status500InternalServerError, "Error occured while updating booking data");
-            }
+            var result = await _bookingService.UpdateAsync(id, request);
+            return result.Status == ResultStatus.Ok ? Ok(result.Value) : ToProblem(result);
         }
 
+        [HttpPost("{id:int}/cancel")]
+        public async Task<ActionResult<BookingResponse>> CancelBooking(int id)
+        {
+            var result = await _bookingService.CancelAsync(id);
+            return result.Status == ResultStatus.Ok ? Ok(result.Value) : ToProblem(result);
+        }
+
+        // Hard delete: keep for admins only. Normal users should cancel instead.
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> DeleteBookings(int id)
         {
@@ -195,23 +96,20 @@ namespace MeetingRoomBooking.Api.Controllers
             {
                 return NotFound();
             }
+
             _dbContext.Bookings.Remove(booking);
             await _dbContext.SaveChangesAsync();
-            return Ok();
+            return NoContent();
         }
 
-        private static BookingResponse ToResponse(Booking booking) => new()
-        {
-            BookingId = booking.BookingId,
-            RoomId = booking.RoomId,
-            StaffId = booking.StaffId,
-            BookingDate = booking.BookingDate,
-            BookingTime = booking.BookingTime,
-            MeetingHours = booking.MeetingHours,
-            Title = booking.Title,
-            NoAttendees = booking.NoAttendees,
-            Status = booking.Status,
-            CreatedTime = booking.CreatedTime
-        };
+        /// <summary>Turns a failed ServiceResult into 400 / 404 / 409 with the message as the title.</summary>
+        private ObjectResult ToProblem<T>(ServiceResult<T> result) => Problem(
+            title: result.Error,
+            statusCode: result.Status switch
+            {
+                ResultStatus.NotFound => StatusCodes.Status404NotFound,
+                ResultStatus.Conflict => StatusCodes.Status409Conflict,
+                _ => StatusCodes.Status400BadRequest
+            });
     }
 }

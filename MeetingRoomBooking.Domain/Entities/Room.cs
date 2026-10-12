@@ -18,7 +18,7 @@ namespace MeetingRoomBooking.Domain.Entities
         [StringLength(50)]
         public string? RoomLocation { get; set; }
         public int Capacity { get; set; }
-        public bool IsActive { get; set; } = true;
+        public bool? IsActive { get; set; } = true;
 
         // A room can have many bookings
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
